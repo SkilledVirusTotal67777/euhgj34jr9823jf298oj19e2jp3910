@@ -3,29 +3,62 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Private Chatroom</title>
+  <title>SMOC</title>
+
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐧</text></svg>">
+
   <script src="/socket.io/socket.io.js"></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
-    body { background-color: #121212; color: #ffffff; display: flex; height: 100vh; justify-content: center; align-items: center; }
+    :root {
+      --bg-color: #121212;
+      --card-bg: #181818;
+      --header-bg: #222222;
+      --accent-color: #4caf50;
+      --text-color: #ffffff;
+      --msg-bg: #262626;
+      --msg-mine-bg: #1e3a29;
+      --app-font: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: var(--app-font); }
+    body { background-color: var(--bg-color); color: var(--text-color); display: flex; height: 100vh; justify-content: center; align-items: center; }
     
-    /* Login Modal */
     #login-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; justify-content: center; align-items: center; z-index: 100; }
     .login-box { background: #1e1e1e; padding: 25px; border-radius: 8px; width: 320px; text-align: center; border: 1px solid #333; }
-    .login-box h2 { margin-bottom: 15px; color: #4caf50; }
+    .login-box h2 { margin-bottom: 15px; color: var(--accent-color); }
     .login-box input { width: 100%; padding: 10px; margin: 8px 0; border-radius: 5px; border: 1px solid #444; background: #2a2a2a; color: #fff; }
-    .login-box button { width: 100%; padding: 10px; background: #4caf50; border: none; color: #fff; font-weight: bold; border-radius: 5px; cursor: pointer; margin-top: 10px; }
+    .login-box button { width: 100%; padding: 10px; background: var(--accent-color); border: none; color: #fff; font-weight: bold; border-radius: 5px; cursor: pointer; margin-top: 10px; }
     
-    /* Main Chat App */
-    #chat-app { width: 100%; max-width: 800px; height: 90vh; display: flex; flex-direction: column; background: #181818; border-radius: 8px; border: 1px solid #2a2a2a; overflow: hidden; }
-    header { padding: 15px; background: #222; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
+    #chat-app { width: 95%; max-width: 1050px; height: 90vh; display: flex; background: var(--card-bg); border-radius: 8px; border: 1px solid #2a2a2a; overflow: hidden; }
+    
+    /* Sidebar */
+    sidebar { width: 280px; background: var(--header-bg); border-right: 1px solid #333; display: flex; flex-direction: column; padding: 15px; gap: 15px; overflow-y: auto; }
+    
+    .mode-switch { display: flex; background: #111; padding: 4px; border-radius: 6px; gap: 4px; }
+    .mode-btn { flex: 1; padding: 8px; border: none; background: transparent; color: #888; font-weight: bold; cursor: pointer; border-radius: 4px; font-size: 0.8rem; }
+    .mode-btn.active { background: var(--accent-color); color: #fff; }
+
+    .sidebar-section h4 { color: var(--accent-color); margin-bottom: 8px; font-size: 0.85rem; text-transform: uppercase; display: flex; justify-content: space-between; align-items: center; }
+    
+    .user-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+    .user-item { padding: 8px 10px; border-radius: 5px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 0.9rem; background: #1a1a1a; transition: 0.2s; }
+    .user-item:hover { background: #2a2a2a; }
+    .user-item.active-dm { border-left: 3px solid var(--accent-color); background: #222; }
+    .online-dot { width: 8px; height: 8px; background: #4caf50; border-radius: 50%; display: inline-block; }
+    
+    .setting-group { margin-bottom: 8px; display: flex; flex-direction: column; gap: 4px; font-size: 0.8rem; }
+    .setting-group select { padding: 6px; border-radius: 4px; border: 1px solid #444; background: #2a2a2a; color: #fff; }
+
+    /* Main Chat */
+    main { flex: 1; display: flex; flex-direction: column; }
+    header { padding: 15px; background: var(--header-bg); border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
     
     #chat-box { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
     
-    .message { background: #262626; padding: 10px 14px; border-radius: 6px; max-width: 80%; width: fit-content; position: relative; }
-    .message.mine { background: #1e3a29; align-self: flex-end; }
+    .message { background: var(--msg-bg); padding: 10px 14px; border-radius: 6px; max-width: 80%; width: fit-content; }
+    .message.mine { background: var(--msg-mine-bg); align-self: flex-end; }
     .msg-header { font-size: 0.8rem; color: #aaa; margin-bottom: 4px; display: flex; gap: 10px; align-items: center; }
-    .msg-author { font-weight: bold; color: #4caf50; }
+    .msg-author { font-weight: bold; color: var(--accent-color); }
     .msg-text { font-size: 1rem; word-break: break-word; }
     
     .actions { display: inline-flex; gap: 6px; margin-left: 8px; }
@@ -33,19 +66,19 @@
     .action-icon:hover { opacity: 1; }
     .block-btn { color: #ff4d4d; font-size: 0.75rem; cursor: pointer; border: 1px solid #ff4d4d; padding: 1px 4px; border-radius: 3px; }
 
-    /* Input Bar */
-    footer { padding: 15px; background: #222; display: flex; gap: 10px; }
+    footer { padding: 15px; background: var(--header-bg); display: flex; gap: 10px; }
     footer input { flex: 1; padding: 12px; border-radius: 5px; border: 1px solid #444; background: #2a2a2a; color: #fff; }
-    footer button { padding: 12px 20px; background: #4caf50; border: none; color: #fff; font-weight: bold; border-radius: 5px; cursor: pointer; }
+    footer button { padding: 12px 20px; background: var(--accent-color); border: none; color: #fff; font-weight: bold; border-radius: 5px; cursor: pointer; }
+    
+    .btn-small { padding: 2px 6px; font-size: 0.75rem; background: #333; border: 1px solid #555; color: #fff; border-radius: 3px; cursor: pointer; }
   </style>
 </head>
 <body>
 
-  <!-- Login Modal -->
   <div id="login-overlay">
     <div class="login-box">
-      <h2>Private Chat</h2>
-      <p style="font-size: 0.8rem; color: #888; margin-bottom: 10px;">Enter a name and short PIN to register or log in.</p>
+      <h2>SMOC Chat 🐧</h2>
+      <p style="font-size: 0.8rem; color: #888; margin-bottom: 10px;">Enter display name and PIN.</p>
       <input type="text" id="username-input" placeholder="Display Name">
       <input type="password" id="pin-input" placeholder="Short PIN">
       <button onclick="login()">Enter Chat</button>
@@ -53,19 +86,63 @@
     </div>
   </div>
 
-  <!-- Chatroom UI -->
   <div id="chat-app">
-    <header>
-      <h3>Room: Public Chat</h3>
-      <span id="user-display" style="font-size: 0.9rem; color: #aaa;"></span>
-    </header>
-    
-    <div id="chat-box"></div>
+    <sidebar>
+      <h3>SMOC 🐧</h3>
+      
+      <div class="mode-switch">
+        <button id="btn-mode-public" class="mode-btn active" onclick="switchMode('public')">🌐 Public</button>
+        <button id="btn-mode-dm" class="mode-btn" onclick="switchMode('dm')">💬 DMs</button>
+      </div>
 
-    <footer>
-      <input type="text" id="message-input" placeholder="Type a message..." onkeydown="if(event.key==='Enter') sendMessage()">
-      <button onclick="sendMessage()">Send</button>
-    </footer>
+      <!-- Active DMs Side Panel -->
+      <div id="dm-sidebar-section" class="sidebar-section" style="display: none;">
+        <h4>Active DMs <button class="btn-small" onclick="promptNewDm()">+ New</button></h4>
+        <ul id="active-dms-list" class="user-list"></ul>
+      </div>
+
+      <!-- Online Members Panel -->
+      <div class="sidebar-section">
+        <h4>Online Users (<span id="online-count">0</span>)</h4>
+        <ul id="online-list" class="user-list"></ul>
+      </div>
+
+      <div class="sidebar-section">
+        <h4>Appearance</h4>
+        <div class="setting-group">
+          <label>Font</label>
+          <select id="font-select" onchange="changeFont(this.value)">
+            <option value="sans-serif">Sans-Serif</option>
+            <option value="monospace">Monospace</option>
+            <option value="cursive">Cursive</option>
+            <option value="Georgia, serif">Serif</option>
+          </select>
+        </div>
+        <div class="setting-group">
+          <label>Theme</label>
+          <select id="theme-select" onchange="changeTheme(this.value)">
+            <option value="dark">Dark</option>
+            <option value="matrix">Matrix</option>
+            <option value="cyberpunk">Cyberpunk</option>
+            <option value="light">Light</option>
+          </select>
+        </div>
+      </div>
+    </sidebar>
+
+    <main>
+      <header>
+        <h3 id="room-title">Public Room</h3>
+        <span id="user-display" style="font-size: 0.9rem; color: #aaa;"></span>
+      </header>
+      
+      <div id="chat-box"></div>
+
+      <footer>
+        <input type="text" id="message-input" placeholder="Type a message..." onkeydown="if(event.key==='Enter') sendMessage()">
+        <button onclick="sendMessage()">Send</button>
+      </footer>
+    </main>
   </div>
 
   <script>
@@ -73,6 +150,11 @@
     let currentUser = '';
     let currentPin = '';
     let isAdmin = false;
+    
+    let currentMode = 'public'; // 'public' or 'dm'
+    let activeDmUser = null;
+    let activePartners = [];
+    let registeredUsers = [];
 
     function login() {
       const username = document.getElementById('username-input').value.trim();
@@ -95,11 +177,93 @@
           document.getElementById('login-overlay').style.display = 'none';
           document.getElementById('user-display').innerText = `Logged in as: ${currentUser}${isAdmin ? ' (Admin)' : ''}`;
 
-          // Load previous messages
-          res.messages.forEach(renderMessage);
+          res.messages.forEach(renderPublicMessage);
+          scrollToBottom();
+          loadDmData();
+        }
+      });
+    }
+
+    function switchMode(mode) {
+      currentMode = mode;
+      document.getElementById('btn-mode-public').classList.toggle('active', mode === 'public');
+      document.getElementById('btn-mode-dm').classList.toggle('active', mode === 'dm');
+      document.getElementById('dm-sidebar-section').style.display = mode === 'dm' ? 'block' : 'none';
+
+      if (mode === 'public') {
+        document.getElementById('room-title').innerText = 'Public Room';
+        refreshPublicChat();
+      } else {
+        if (activeDmUser) {
+          openDmChat(activeDmUser);
+        } else if (activePartners.length > 0) {
+          openDmChat(activePartners[0]);
+        } else {
+          document.getElementById('room-title').innerText = 'Direct Messages (Select a user)';
+          document.getElementById('chat-box').innerHTML = '<div style="color:#777; text-align:center; margin-top:40px;">Select an active conversation or click "+ New" to message a user.</div>';
+        }
+      }
+    }
+
+    function loadDmData() {
+      socket.emit('get_dm_data', { username: currentUser, pin: currentPin }, (res) => {
+        if (res.success) {
+          activePartners = res.activePartners;
+          registeredUsers = res.allUsers;
+          renderActiveDmsList();
+        }
+      });
+    }
+
+    function renderActiveDmsList() {
+      const list = document.getElementById('active-dms-list');
+      list.innerHTML = '';
+      if (activePartners.length === 0) {
+        list.innerHTML = '<li style="font-size:0.8rem; color:#666;">No active DMs yet</li>';
+        return;
+      }
+
+      activePartners.forEach(partner => {
+        const li = document.createElement('li');
+        li.className = `user-item ${partner === activeDmUser && currentMode === 'dm' ? 'active-dm' : ''}`;
+        li.innerHTML = `💬 ${partner}`;
+        li.onclick = () => openDmChat(partner);
+        list.appendChild(li);
+      });
+    }
+
+    function openDmChat(targetUser) {
+      if (targetUser === currentUser) return alert("You cannot DM yourself.");
+      
+      currentMode = 'dm';
+      activeDmUser = targetUser;
+      document.getElementById('btn-mode-public').classList.remove('active');
+      document.getElementById('btn-mode-dm').classList.add('active');
+      document.getElementById('dm-sidebar-section').style.display = 'block';
+      document.getElementById('room-title').innerText = `DM with ${targetUser}`;
+
+      if (!activePartners.includes(targetUser)) {
+        activePartners.push(targetUser);
+      }
+      renderActiveDmsList();
+
+      document.getElementById('chat-box').innerHTML = '';
+      socket.emit('get_dm_history', { username: currentUser, pin: currentPin, targetUser }, (res) => {
+        if (res.success) {
+          res.history.forEach(renderDmMessage);
           scrollToBottom();
         }
       });
+    }
+
+    function promptNewDm() {
+      const target = prompt(`Enter username to DM:\nAvailable users: ${registeredUsers.join(', ')}`);
+      if (target) {
+        const cleaned = target.trim();
+        if (cleaned && cleaned !== currentUser) {
+          openDmChat(cleaned);
+        }
+      }
     }
 
     function sendMessage() {
@@ -107,8 +271,66 @@
       const text = input.value.trim();
       if (!text) return;
 
-      socket.emit('send_message', { username: currentUser, pin: currentPin, text });
+      if (currentMode === 'public') {
+        socket.emit('send_message', { username: currentUser, pin: currentPin, text });
+      } else if (currentMode === 'dm' && activeDmUser) {
+        socket.emit('send_dm', { username: currentUser, pin: currentPin, recipient: activeDmUser, text });
+      }
       input.value = '';
+    }
+
+    function renderPublicMessage(msg) {
+      if (currentMode !== 'public') return;
+      const box = document.getElementById('chat-box');
+      const div = document.createElement('div');
+      div.className = `message ${msg.username === currentUser ? 'mine' : ''}`;
+      div.id = `msg-${msg.id}`;
+
+      const isOwner = msg.username === currentUser;
+
+      let actionsHtml = '';
+      if (isOwner) actionsHtml += `<i class="action-icon" onclick="editMsg('${msg.id}', \`${msg.text}\`)">✏️</i>`;
+      if (isOwner || isAdmin) actionsHtml += `<i class="action-icon" onclick="deleteMsg('${msg.id}')">🗑️</i>`;
+      if (isAdmin && msg.username !== 'admin') actionsHtml += `<span class="block-btn" onclick="blockUser('${msg.username}')">Block</span>`;
+
+      div.innerHTML = `
+        <div class="msg-header">
+          <span class="msg-author">${msg.username}</span>
+          <span>${msg.time}</span>
+          <span class="actions">${actionsHtml}</span>
+        </div>
+        <div class="msg-text">${msg.text}</div>
+      `;
+
+      box.appendChild(div);
+      scrollToBottom();
+    }
+
+    function renderDmMessage(msg) {
+      const box = document.getElementById('chat-box');
+      const div = document.createElement('div');
+      div.className = `message ${msg.sender === currentUser ? 'mine' : ''}`;
+
+      div.innerHTML = `
+        <div class="msg-header">
+          <span class="msg-author">${msg.sender}</span>
+          <span>${msg.time}</span>
+        </div>
+        <div class="msg-text">${msg.text}</div>
+      `;
+
+      box.appendChild(div);
+      scrollToBottom();
+    }
+
+    function refreshPublicChat() {
+      document.getElementById('chat-box').innerHTML = '';
+      socket.emit('login', { username: currentUser, pin: currentPin }, (res) => {
+        if (res.success) {
+          res.messages.forEach(renderPublicMessage);
+          scrollToBottom();
+        }
+      });
     }
 
     function deleteMsg(id) {
@@ -130,40 +352,22 @@
       }
     }
 
-    function renderMessage(msg) {
-      const box = document.getElementById('chat-box');
-      const div = document.createElement('div');
-      div.className = `message ${msg.username === currentUser ? 'mine' : ''}`;
-      div.id = `msg-${msg.id}`;
+    /* Socket Events */
+    socket.on('new_message', (msg) => {
+      if (currentMode === 'public') renderPublicMessage(msg);
+    });
 
-      const isOwner = msg.username === currentUser;
-
-      let actionsHtml = '';
-      if (isOwner) {
-        actionsHtml += `<i class="action-icon" onclick="editMsg('${msg.id}', \`${msg.text}\`)">✏️</i>`;
-      }
-      if (isOwner || isAdmin) {
-        actionsHtml += `<i class="action-icon" onclick="deleteMsg('${msg.id}')">🗑️</i>`;
-      }
-      if (isAdmin && msg.username !== 'admin') {
-        actionsHtml += `<span class="block-btn" onclick="blockUser('${msg.username}')">Block</span>`;
+    socket.on('new_dm', ({ key, msg }) => {
+      const otherUser = msg.sender === currentUser ? msg.recipient : msg.sender;
+      if (!activePartners.includes(otherUser)) {
+        activePartners.push(otherUser);
+        renderActiveDmsList();
       }
 
-      div.innerHTML = `
-        <div class="msg-header">
-          <span class="msg-author">${msg.username}</span>
-          <span>${msg.time}</span>
-          <span class="actions">${actionsHtml}</span>
-        </div>
-        <div class="msg-text">${msg.text}</div>
-      `;
-
-      box.appendChild(div);
-      scrollToBottom();
-    }
-
-    // Socket Events
-    socket.on('new_message', (msg) => renderMessage(msg));
+      if (currentMode === 'dm' && activeDmUser === otherUser) {
+        renderDmMessage(msg);
+      }
+    });
     
     socket.on('message_deleted', (id) => {
       const el = document.getElementById(`msg-${id}`);
@@ -181,6 +385,73 @@
         location.reload();
       }
     });
+
+    socket.on('update_online_users', (users) => {
+      document.getElementById('online-count').innerText = users.length;
+      const list = document.getElementById('online-list');
+      list.innerHTML = '';
+      users.forEach(u => {
+        const li = document.createElement('li');
+        li.className = 'user-item';
+        li.innerHTML = `<span class="online-dot"></span> ${u}`;
+        li.onclick = () => openDmChat(u);
+        list.appendChild(li);
+      });
+    });
+
+    function changeFont(font) {
+      document.documentElement.style.setProperty('--app-font', font);
+      localStorage.setItem('smoc_font', font);
+    }
+
+    function changeTheme(theme) {
+      const root = document.documentElement.style;
+      if (theme === 'matrix') {
+        root.setProperty('--bg-color', '#050d05');
+        root.setProperty('--card-bg', '#0a1a0a');
+        root.setProperty('--header-bg', '#0f260f');
+        root.setProperty('--accent-color', '#00ff00');
+        root.setProperty('--text-color', '#00ff00');
+        root.setProperty('--msg-bg', '#123312');
+        root.setProperty('--msg-mine-bg', '#1a4d1a');
+      } else if (theme === 'cyberpunk') {
+        root.setProperty('--bg-color', '#1a0022');
+        root.setProperty('--card-bg', '#2d0036');
+        root.setProperty('--header-bg', '#40004d');
+        root.setProperty('--accent-color', '#ff007f');
+        root.setProperty('--text-color', '#00ffff');
+        root.setProperty('--msg-bg', '#4a0052');
+        root.setProperty('--msg-mine-bg', '#660070');
+      } else if (theme === 'light') {
+        root.setProperty('--bg-color', '#e0e0e0');
+        root.setProperty('--card-bg', '#ffffff');
+        root.setProperty('--header-bg', '#f5f5f5');
+        root.setProperty('--accent-color', '#2196f3');
+        root.setProperty('--text-color', '#222222');
+        root.setProperty('--msg-bg', '#eeeeee');
+        root.setProperty('--msg-mine-bg', '#bbdefb');
+      } else {
+        root.setProperty('--bg-color', '#121212');
+        root.setProperty('--card-bg', '#181818');
+        root.setProperty('--header-bg', '#222222');
+        root.setProperty('--accent-color', '#4caf50');
+        root.setProperty('--text-color', '#ffffff');
+        root.setProperty('--msg-bg', '#262626');
+        root.setProperty('--msg-mine-bg', '#1e3a29');
+      }
+      localStorage.setItem('smoc_theme', theme);
+    }
+
+    const savedFont = localStorage.getItem('smoc_font');
+    if (savedFont) {
+      document.getElementById('font-select').value = savedFont;
+      changeFont(savedFont);
+    }
+    const savedTheme = localStorage.getItem('smoc_theme');
+    if (savedTheme) {
+      document.getElementById('theme-select').value = savedTheme;
+      changeTheme(savedTheme);
+    }
 
     function scrollToBottom() {
       const box = document.getElementById('chat-box');
