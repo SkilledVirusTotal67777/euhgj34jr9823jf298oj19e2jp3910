@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Private Chatroom</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
+    body { background-color: #121212; color: #ffffff; display: flex; height: 100vh; justify-content: center; align-items: center; }
+    
+    /* Login Modal */
+    #login-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; justify-content: center; align-items: center; z-index: 100; }
+    .login-box { background: #1e1e1e; padding: 25px; border-radius: 8px; width: 320px; text-align: center; border: 1px solid #333; }
+    .login-box h2 { margin-bottom: 15px; color: #4caf50; }
+    .login-box input { width: 100%; padding: 10px; margin: 8px 0; border-radius: 5px; border: 1px solid #444; background: #2a2a2a; color: #fff; }
+    .login-box button { width: 100%; padding: 10px; background: #4caf50; border: none; color: #fff; font-weight: bold; border-radius: 5px; cursor: pointer; margin-top: 10px; }
+    
+    /* Main Chat App */
+    #chat-app { width: 100%; max-width: 800px; height: 90vh; display: flex; flex-direction: column; background: #181818; border-radius: 8px; border: 1px solid #2a2a2a; overflow: hidden; }
+    header { padding: 15px; background: #222; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
+    
+    #chat-box { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+    
+    .message { background: #262626; padding: 10px 14px; border-radius: 6px; max-width: 80%; width: fit-content; position: relative; }
+    .message.mine { background: #1e3a29; align-self: flex-end; }
+    .msg-header { font-size: 0.8rem; color: #aaa; margin-bottom: 4px; display: flex; gap: 10px; align-items: center; }
+    .msg-author { font-weight: bold; color: #4caf50; }
+    .msg-text { font-size: 1rem; word-break: break-word; }
+    
+    .actions { display: inline-flex; gap: 6px; margin-left: 8px; }
+    .action-icon { cursor: pointer; opacity: 0.7; font-style: normal; font-size: 0.85rem; }
+    .action-icon:hover { opacity: 1; }
+    .block-btn { color: #ff4d4d; font-size: 0.75rem; cursor: pointer; border: 1px solid #ff4d4d; padding: 1px 4px; border-radius: 3px; }
+
+    /* Input Bar */
+    footer { padding: 15px; background: #222; display: flex; gap: 10px; }
+    footer input { flex: 1; padding: 12px; border-radius: 5px; border: 1px solid #444; background: #2a2a2a; color: #fff; }
+    footer button { padding: 12px 20px; background: #4caf50; border: none; color: #fff; font-weight: bold; border-radius: 5px; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+  <!-- Login Modal -->
+  <div id="login-overlay">
+    <div class="login-box">
+      <h2>Private Chat</h2>
+      <p style="font-size: 0.8rem; color: #888; margin-bottom: 10px;">Enter a name and short PIN to register or log in.</p>
+      <input type="text" id="username-input" placeholder="Display Name">
+      <input type="password" id="pin-input" placeholder="Short PIN">
+      <button onclick="login()">Enter Chat</button>
+      <div id="login-error" style="color: #ff4d4d; margin-top: 10px; font-size: 0.85rem;"></div>
+    </div>
+  </div>
+
+  <!-- Chatroom UI -->
+  <div id="chat-app">
+    <header>
+      <h3>Room: Public Chat</h3>
+      <span id="user-display" style="font-size: 0.9rem; color: #aaa;"></span>
+    </header>
+    
+    <div id="chat-box"></div>
+
+    <footer>
+      <input type="text" id="message-input" placeholder="Type a message..." onkeydown="if(event.key==='Enter') sendMessage()">
+      <button onclick="sendMessage()">Send</button>
+    </footer>
+  </div>
+
+  <script>
+    const socket = io();
+    let currentUser = '';
+    let currentPin = '';
+    let isAdmin = false;
+
+    function login() {
+      const username = document.getElementById('username-input').value.trim();
+      const pin = document.getElementById('pin-input').value.trim();
+      const errDiv = document.getElementById('login-error');
+
+      if (!username || !pin) {
+        errDiv.innerText = "Please enter both name and PIN.";
+        return;
+      }
+
+      socket.emit('login', { username, pin }, (res) => {
+        if (!res.success) {
+          errDiv.innerText = res.error;
+        } else {
+          currentUser = username;
+          currentPin = pin;
+          isAdmin = res.isAdmin;
+
+          document.getElementById('login-overlay').style.display = 'none';
+          document.getElementById('user-display').innerText = `Logged in as: ${currentUser}${isAdmin ? ' (Admin)' : ''}`;
+
+          // Load previous messages
+          res.messages.forEach(renderMessage);
+          scrollToBottom();
+        }
+      });
+    }
+
+    function sendMessage() {
+      const input = document.getElementById('message-input');
+      const text = input.value.trim();
+      if (!text) return;
+
+      socket.emit('send_message', { username: currentUser, pin: currentPin, text });
+      input.value = '';
+    }
+
+    function deleteMsg(id) {
+      if (confirm("Delete this message?")) {
+        socket.emit('delete_message', { username: currentUser, pin: currentPin, messageId: id });
+      }
+    }
+
+    function editMsg(id, oldText) {
+      const newText = prompt("Edit your message:", oldText);
+      if (newText && newText !== oldText) {
+        socket.emit('edit_message', { username: currentUser, pin: currentPin, messageId: id, newText });
+      }
+    }
+
+    function blockUser(targetUser) {
+      if (confirm(`Are you sure you want to block ${targetUser}?`)) {
+        socket.emit('block_user', { username: currentUser, pin: currentPin, targetUsername: targetUser });
+      }
+    }
+
+    function renderMessage(msg) {
+      const box = document.getElementById('chat-box');
+      const div = document.createElement('div');
+      div.className = `message ${msg.username === currentUser ? 'mine' : ''}`;
+      div.id = `msg-${msg.id}`;
+
+      const isOwner = msg.username === currentUser;
+
+      let actionsHtml = '';
+      if (isOwner) {
+        actionsHtml += `<i class="action-icon" onclick="editMsg('${msg.id}', \`${msg.text}\`)">✏️</i>`;
+      }
+      if (isOwner || isAdmin) {
+        actionsHtml += `<i class="action-icon" onclick="deleteMsg('${msg.id}')">🗑️</i>`;
+      }
+      if (isAdmin && msg.username !== 'admin') {
+        actionsHtml += `<span class="block-btn" onclick="blockUser('${msg.username}')">Block</span>`;
+      }
+
+      div.innerHTML = `
+        <div class="msg-header">
+          <span class="msg-author">${msg.username}</span>
+          <span>${msg.time}</span>
+          <span class="actions">${actionsHtml}</span>
+        </div>
+        <div class="msg-text">${msg.text}</div>
+      `;
+
+      box.appendChild(div);
+      scrollToBottom();
+    }
+
+    // Socket Events
+    socket.on('new_message', (msg) => renderMessage(msg));
+    
+    socket.on('message_deleted', (id) => {
+      const el = document.getElementById(`msg-${id}`);
+      if (el) el.remove();
+    });
+
+    socket.on('message_edited', ({ id, newText }) => {
+      const el = document.getElementById(`msg-${id}`);
+      if (el) el.querySelector('.msg-text').innerText = newText;
+    });
+
+    socket.on('user_blocked', (blockedUser) => {
+      if (currentUser === blockedUser) {
+        alert("Your account has been blocked by an admin.");
+        location.reload();
+      }
+    });
+
+    function scrollToBottom() {
+      const box = document.getElementById('chat-box');
+      box.scrollTop = box.scrollHeight;
+    }
+  </script>
+</body>
+</html>
