@@ -24,15 +24,15 @@
     body { background-color: var(--bg-color); color: var(--text-color); display: flex; height: 100vh; justify-content: center; align-items: center; }
     
     #login-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; justify-content: center; align-items: center; z-index: 100; }
-    .login-box { background: #1e1e1e; padding: 25px; border-radius: 8px; width: 320px; text-align: center; border: 1px solid #333; }
-    .login-box h2 { margin-bottom: 15px; color: var(--accent-color); }
+    .login-box { background: #1e1e1e; padding: 25px; border-radius: 8px; width: 330px; text-align: center; border: 1px solid #333; }
+    .login-box h2 { margin-bottom: 10px; color: var(--accent-color); }
     .login-box input { width: 100%; padding: 10px; margin: 8px 0; border-radius: 5px; border: 1px solid #444; background: #2a2a2a; color: #fff; }
     .login-box button { width: 100%; padding: 10px; background: var(--accent-color); border: none; color: #fff; font-weight: bold; border-radius: 5px; cursor: pointer; margin-top: 10px; }
     
-    #chat-app { width: 95%; max-width: 1050px; height: 90vh; display: flex; background: var(--card-bg); border-radius: 8px; border: 1px solid #2a2a2a; overflow: hidden; }
+    #chat-app { width: 95%; max-width: 1100px; height: 90vh; display: flex; background: var(--card-bg); border-radius: 8px; border: 1px solid #2a2a2a; overflow: hidden; position: relative; }
     
     /* Sidebar */
-    sidebar { width: 280px; background: var(--header-bg); border-right: 1px solid #333; display: flex; flex-direction: column; padding: 15px; gap: 15px; overflow-y: auto; }
+    sidebar { width: 290px; background: var(--header-bg); border-right: 1px solid #333; display: flex; flex-direction: column; padding: 15px; gap: 15px; overflow-y: auto; }
     
     .mode-switch { display: flex; background: #111; padding: 4px; border-radius: 6px; gap: 4px; }
     .mode-btn { flex: 1; padding: 8px; border: none; background: transparent; color: #888; font-weight: bold; cursor: pointer; border-radius: 4px; font-size: 0.8rem; }
@@ -41,44 +41,56 @@
     .sidebar-section h4 { color: var(--accent-color); margin-bottom: 8px; font-size: 0.85rem; text-transform: uppercase; display: flex; justify-content: space-between; align-items: center; }
     
     .user-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
-    .user-item { padding: 8px 10px; border-radius: 5px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 0.9rem; background: #1a1a1a; transition: 0.2s; }
+    .user-item { padding: 8px 10px; border-radius: 5px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-size: 0.85rem; background: #1a1a1a; transition: 0.2s; }
     .user-item:hover { background: #2a2a2a; }
     .user-item.active-dm { border-left: 3px solid var(--accent-color); background: #222; }
     .online-dot { width: 8px; height: 8px; background: #4caf50; border-radius: 50%; display: inline-block; }
+    .muted-badge { font-size: 0.7rem; color: #ff9800; border: 1px solid #ff9800; padding: 1px 4px; border-radius: 3px; }
     
     .setting-group { margin-bottom: 8px; display: flex; flex-direction: column; gap: 4px; font-size: 0.8rem; }
-    .setting-group select { padding: 6px; border-radius: 4px; border: 1px solid #444; background: #2a2a2a; color: #fff; }
+    .setting-group select, .setting-group input { padding: 6px; border-radius: 4px; border: 1px solid #444; background: #2a2a2a; color: #fff; }
 
     /* Main Chat */
-    main { flex: 1; display: flex; flex-direction: column; }
+    main { flex: 1; display: flex; flex-direction: column; position: relative; }
     header { padding: 15px; background: var(--header-bg); border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
     
     #chat-box { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
     
     .message { background: var(--msg-bg); padding: 10px 14px; border-radius: 6px; max-width: 80%; width: fit-content; }
     .message.mine { background: var(--msg-mine-bg); align-self: flex-end; }
+    .message.filtered-msg { background: #222; border: 1px dashed #666; color: #888; font-style: italic; }
+    
     .msg-header { font-size: 0.8rem; color: #aaa; margin-bottom: 4px; display: flex; gap: 10px; align-items: center; }
-    .msg-author { font-weight: bold; color: var(--accent-color); }
+    .msg-author { font-weight: bold; }
     .msg-text { font-size: 1rem; word-break: break-word; }
     
     .actions { display: inline-flex; gap: 6px; margin-left: 8px; }
     .action-icon { cursor: pointer; opacity: 0.7; font-style: normal; font-size: 0.85rem; }
     .action-icon:hover { opacity: 1; }
-    .block-btn { color: #ff4d4d; font-size: 0.75rem; cursor: pointer; border: 1px solid #ff4d4d; padding: 1px 4px; border-radius: 3px; }
+    
+    .admin-btn { font-size: 0.7rem; cursor: pointer; padding: 2px 5px; border-radius: 3px; border: 1px solid; }
+    .btn-mute { color: #ff9800; border-color: #ff9800; }
+    .btn-ban { color: #ff4d4d; border-color: #ff4d4d; }
 
-    footer { padding: 15px; background: var(--header-bg); display: flex; gap: 10px; }
+    footer { padding: 15px; background: var(--header-bg); display: flex; gap: 10px; position: relative; }
     footer input { flex: 1; padding: 12px; border-radius: 5px; border: 1px solid #444; background: #2a2a2a; color: #fff; }
-    footer button { padding: 12px 20px; background: var(--accent-color); border: none; color: #fff; font-weight: bold; border-radius: 5px; cursor: pointer; }
+    footer button { padding: 12px 18px; background: var(--accent-color); border: none; color: #fff; font-weight: bold; border-radius: 5px; cursor: pointer; }
     
     .btn-small { padding: 2px 6px; font-size: 0.75rem; background: #333; border: 1px solid #555; color: #fff; border-radius: 3px; cursor: pointer; }
+
+    /* Emoji Picker Modal */
+    #emoji-picker { position: absolute; bottom: 70px; right: 20px; width: 280px; height: 220px; background: #1e1e1e; border: 1px solid #444; border-radius: 8px; display: none; padding: 10px; grid-template-columns: repeat(6, 1fr); gap: 6px; overflow-y: auto; z-index: 50; }
+    .emoji-item { font-size: 1.4rem; text-align: center; cursor: pointer; padding: 4px; border-radius: 4px; }
+    .emoji-item:hover { background: #333; }
   </style>
 </head>
 <body>
 
+  <!-- Login Modal -->
   <div id="login-overlay">
     <div class="login-box">
       <h2>SMOC Chat 🐧</h2>
-      <p style="font-size: 0.8rem; color: #888; margin-bottom: 10px;">Enter display name and PIN.</p>
+      <p style="font-size: 0.8rem; color: #888; margin-bottom: 10px;">First time? Set a name & PIN to register.<br>Returning? Enter your registered PIN.</p>
       <input type="text" id="username-input" placeholder="Display Name">
       <input type="password" id="pin-input" placeholder="Short PIN">
       <button onclick="login()">Enter Chat</button>
@@ -88,43 +100,58 @@
 
   <div id="chat-app">
     <sidebar>
-      <h3>SMOC 🐧</h3>
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h3>SMOC 🐧</h3>
+        <button class="btn-small" onclick="switchAccount()">Sign Out</button>
+      </div>
       
       <div class="mode-switch">
         <button id="btn-mode-public" class="mode-btn active" onclick="switchMode('public')">🌐 Public</button>
         <button id="btn-mode-dm" class="mode-btn" onclick="switchMode('dm')">💬 DMs</button>
       </div>
 
-      <!-- Active DMs Side Panel -->
       <div id="dm-sidebar-section" class="sidebar-section" style="display: none;">
         <h4>Active DMs <button class="btn-small" onclick="promptNewDm()">+ New</button></h4>
         <ul id="active-dms-list" class="user-list"></ul>
       </div>
 
-      <!-- Online Members Panel -->
       <div class="sidebar-section">
         <h4>Online Users (<span id="online-count">0</span>)</h4>
         <ul id="online-list" class="user-list"></ul>
       </div>
 
       <div class="sidebar-section">
-        <h4>Appearance</h4>
+        <h4>Customization</h4>
         <div class="setting-group">
-          <label>Font</label>
+          <label>Name Color (`/name`)</label>
+          <input type="color" id="color-picker" onchange="updateNameColor(this.value)">
+        </div>
+
+        <div class="setting-group">
+          <label>Font Style</label>
           <select id="font-select" onchange="changeFont(this.value)">
-            <option value="sans-serif">Sans-Serif</option>
-            <option value="monospace">Monospace</option>
+            <option value="sans-serif">Sans-Serif (Default)</option>
+            <option value="monospace">Monospace (Hacker)</option>
+            <option value="'Comic Sans MS', cursive">Comic Sans (Playful)</option>
+            <option value="Impact, sans-serif">Impact (Loud)</option>
+            <option value="'Courier New', monospace">Retro Terminal</option>
+            <option value="Georgia, serif">Serif (Classic)</option>
+            <option value="'Trebuchet MS', sans-serif">Modern Clean</option>
             <option value="cursive">Cursive</option>
-            <option value="Georgia, serif">Serif</option>
           </select>
         </div>
+
         <div class="setting-group">
-          <label>Theme</label>
+          <label>Theme Preset</label>
           <select id="theme-select" onchange="changeTheme(this.value)">
-            <option value="dark">Dark</option>
-            <option value="matrix">Matrix</option>
+            <option value="dark">Dark Default</option>
+            <option value="sunset">Sunset Glow</option>
+            <option value="ocean">Ocean Breeze</option>
+            <option value="dracula">Dracula Vamp</option>
+            <option value="golden">Golden Luxe</option>
+            <option value="matrix">Matrix Green</option>
             <option value="cyberpunk">Cyberpunk</option>
-            <option value="light">Light</option>
+            <option value="light">Light Mode</option>
           </select>
         </div>
       </div>
@@ -138,8 +165,12 @@
       
       <div id="chat-box"></div>
 
+      <!-- Emoji Picker Grid -->
+      <div id="emoji-picker"></div>
+
       <footer>
-        <input type="text" id="message-input" placeholder="Type a message..." onkeydown="if(event.key==='Enter') sendMessage()">
+        <input type="text" id="message-input" placeholder="Type message... (Commands: /emoji, /name #ff0000)" onkeydown="if(event.key==='Enter') sendMessage()">
+        <button type="button" class="btn-small" onclick="toggleEmojiPicker()" style="font-size:1.2rem;">😀</button>
         <button onclick="sendMessage()">Send</button>
       </footer>
     </main>
@@ -149,12 +180,27 @@
     const socket = io();
     let currentUser = '';
     let currentPin = '';
+    let currentColor = '#4caf50';
     let isAdmin = false;
     
-    let currentMode = 'public'; // 'public' or 'dm'
+    let currentMode = 'public';
     let activeDmUser = null;
     let activePartners = [];
     let registeredUsers = [];
+
+    const EMOJIS = ["😀","😂","🤣","😊","😍","😜","😎","🤓","🙈","🔥","✨","🎉","👍","👎","❤️","💀","🍦","👾","🤖","🐧","🚀","💯","💩","🥑"];
+
+    window.onload = () => {
+      buildEmojiPicker();
+      // Persistent Login check
+      const savedUser = localStorage.getItem('smoc_user');
+      const savedPin = localStorage.getItem('smoc_pin');
+      if (savedUser && savedPin) {
+        document.getElementById('username-input').value = savedUser;
+        document.getElementById('pin-input').value = savedPin;
+        login();
+      }
+    };
 
     function login() {
       const username = document.getElementById('username-input').value.trim();
@@ -169,19 +215,32 @@
       socket.emit('login', { username, pin }, (res) => {
         if (!res.success) {
           errDiv.innerText = res.error;
+          localStorage.removeItem('smoc_user');
+          localStorage.removeItem('smoc_pin');
         } else {
           currentUser = username;
           currentPin = pin;
           isAdmin = res.isAdmin;
+          currentColor = res.nameColor || '#4caf50';
 
+          localStorage.setItem('smoc_user', username);
+          localStorage.setItem('smoc_pin', pin);
+
+          document.getElementById('color-picker').value = currentColor;
           document.getElementById('login-overlay').style.display = 'none';
-          document.getElementById('user-display').innerText = `Logged in as: ${currentUser}${isAdmin ? ' (Admin)' : ''}`;
+          document.getElementById('user-display').innerText = `Logged in as: ${currentUser}${isAdmin ? ' (Admin 🔥)' : ''}`;
 
           res.messages.forEach(renderPublicMessage);
           scrollToBottom();
           loadDmData();
         }
       });
+    }
+
+    function switchAccount() {
+      localStorage.removeItem('smoc_user');
+      localStorage.removeItem('smoc_pin');
+      location.reload();
     }
 
     function switchMode(mode) {
@@ -199,8 +258,8 @@
         } else if (activePartners.length > 0) {
           openDmChat(activePartners[0]);
         } else {
-          document.getElementById('room-title').innerText = 'Direct Messages (Select a user)';
-          document.getElementById('chat-box').innerHTML = '<div style="color:#777; text-align:center; margin-top:40px;">Select an active conversation or click "+ New" to message a user.</div>';
+          document.getElementById('room-title').innerText = 'Direct Messages';
+          document.getElementById('chat-box').innerHTML = '<div style="color:#777; text-align:center; margin-top:40px;">Select a user or click "+ New" to DM.</div>';
         }
       }
     }
@@ -226,7 +285,7 @@
       activePartners.forEach(partner => {
         const li = document.createElement('li');
         li.className = `user-item ${partner === activeDmUser && currentMode === 'dm' ? 'active-dm' : ''}`;
-        li.innerHTML = `💬 ${partner}`;
+        li.innerHTML = `<span>💬 ${partner}</span>`;
         li.onclick = () => openDmChat(partner);
         list.appendChild(li);
       });
@@ -257,7 +316,7 @@
     }
 
     function promptNewDm() {
-      const target = prompt(`Enter username to DM:\nAvailable users: ${registeredUsers.join(', ')}`);
+      const target = prompt(`Enter username to DM:\nRegistered users: ${registeredUsers.join(', ')}`);
       if (target) {
         const cleaned = target.trim();
         if (cleaned && cleaned !== currentUser) {
@@ -271,19 +330,39 @@
       const text = input.value.trim();
       if (!text) return;
 
+      // Handle Slash Commands
+      if (text === '/emoji') {
+        toggleEmojiPicker();
+        input.value = '';
+        return;
+      }
+      if (text.startsWith('/name ')) {
+        const newColor = text.replace('/name ', '').trim();
+        updateNameColor(newColor);
+        input.value = '';
+        return;
+      }
+
       if (currentMode === 'public') {
         socket.emit('send_message', { username: currentUser, pin: currentPin, text });
       } else if (currentMode === 'dm' && activeDmUser) {
         socket.emit('send_dm', { username: currentUser, pin: currentPin, recipient: activeDmUser, text });
       }
       input.value = '';
+      document.getElementById('emoji-picker').style.display = 'none';
+    }
+
+    function updateNameColor(color) {
+      currentColor = color;
+      socket.emit('set_name_color', { username: currentUser, pin: currentPin, color });
     }
 
     function renderPublicMessage(msg) {
       if (currentMode !== 'public') return;
       const box = document.getElementById('chat-box');
       const div = document.createElement('div');
-      div.className = `message ${msg.username === currentUser ? 'mine' : ''}`;
+      
+      div.className = `message ${msg.username === currentUser ? 'mine' : ''} ${msg.isFiltered ? 'filtered-msg' : ''}`;
       div.id = `msg-${msg.id}`;
 
       const isOwner = msg.username === currentUser;
@@ -291,11 +370,10 @@
       let actionsHtml = '';
       if (isOwner) actionsHtml += `<i class="action-icon" onclick="editMsg('${msg.id}', \`${msg.text}\`)">✏️</i>`;
       if (isOwner || isAdmin) actionsHtml += `<i class="action-icon" onclick="deleteMsg('${msg.id}')">🗑️</i>`;
-      if (isAdmin && msg.username !== 'admin') actionsHtml += `<span class="block-btn" onclick="blockUser('${msg.username}')">Block</span>`;
 
       div.innerHTML = `
         <div class="msg-header">
-          <span class="msg-author">${msg.username}</span>
+          <span class="msg-author" style="color: ${msg.color || '#4caf50'}">${msg.username}</span>
           <span>${msg.time}</span>
           <span class="actions">${actionsHtml}</span>
         </div>
@@ -309,11 +387,11 @@
     function renderDmMessage(msg) {
       const box = document.getElementById('chat-box');
       const div = document.createElement('div');
-      div.className = `message ${msg.sender === currentUser ? 'mine' : ''}`;
+      div.className = `message ${msg.sender === currentUser ? 'mine' : ''} ${msg.isFiltered ? 'filtered-msg' : ''}`;
 
       div.innerHTML = `
         <div class="msg-header">
-          <span class="msg-author">${msg.sender}</span>
+          <span class="msg-author" style="color: ${msg.color || '#4caf50'}">${msg.sender}</span>
           <span>${msg.time}</span>
         </div>
         <div class="msg-text">${msg.text}</div>
@@ -333,9 +411,20 @@
       });
     }
 
+    /* Admin Action Handlers */
     function deleteMsg(id) {
       if (confirm("Delete this message?")) {
         socket.emit('delete_message', { username: currentUser, pin: currentPin, messageId: id });
+      }
+    }
+
+    function toggleMute(targetUser) {
+      socket.emit('toggle_mute', { username: currentUser, pin: currentPin, targetUsername: targetUser });
+    }
+
+    function banUser(targetUser) {
+      if (confirm(`PERMANENTLY BAN ${targetUser}?`)) {
+        socket.emit('ban_user', { username: currentUser, pin: currentPin, targetUsername: targetUser });
       }
     }
 
@@ -346,13 +435,27 @@
       }
     }
 
-    function blockUser(targetUser) {
-      if (confirm(`Are you sure you want to block ${targetUser}?`)) {
-        socket.emit('block_user', { username: currentUser, pin: currentPin, targetUsername: targetUser });
-      }
+    /* Emoji Picker Helpers */
+    function buildEmojiPicker() {
+      const picker = document.getElementById('emoji-picker');
+      picker.innerHTML = '';
+      EMOJIS.forEach(e => {
+        const span = document.createElement('span');
+        span.className = 'emoji-item';
+        span.innerText = e;
+        span.onclick = () => {
+          document.getElementById('message-input').value += e;
+        };
+        picker.appendChild(span);
+      });
     }
 
-    /* Socket Events */
+    function toggleEmojiPicker() {
+      const picker = document.getElementById('emoji-picker');
+      picker.style.display = picker.style.display === 'grid' ? 'none' : 'grid';
+    }
+
+    /* Socket Listener Events */
     socket.on('new_message', (msg) => {
       if (currentMode === 'public') renderPublicMessage(msg);
     });
@@ -363,10 +466,13 @@
         activePartners.push(otherUser);
         renderActiveDmsList();
       }
-
       if (currentMode === 'dm' && activeDmUser === otherUser) {
         renderDmMessage(msg);
       }
+    });
+
+    socket.on('chat_error', (errMsg) => {
+      alert(errMsg);
     });
     
     socket.on('message_deleted', (id) => {
@@ -379,10 +485,10 @@
       if (el) el.querySelector('.msg-text').innerText = newText;
     });
 
-    socket.on('user_blocked', (blockedUser) => {
-      if (currentUser === blockedUser) {
-        alert("Your account has been blocked by an admin.");
-        location.reload();
+    socket.on('user_banned', (targetUser) => {
+      if (currentUser === targetUser) {
+        alert("Your account has been banned by Admin.");
+        switchAccount();
       }
     });
 
@@ -393,12 +499,30 @@
       users.forEach(u => {
         const li = document.createElement('li');
         li.className = 'user-item';
-        li.innerHTML = `<span class="online-dot"></span> ${u}`;
-        li.onclick = () => openDmChat(u);
+
+        let adminControls = '';
+        if (isAdmin && u.username !== 'admin') {
+          adminControls = `
+            <span style="display:inline-flex; gap:4px;">
+              <button class="admin-btn btn-mute" onclick="toggleMute('${u.username}')">${u.isMuted ? 'Unmute' : 'Mute'}</button>
+              <button class="admin-btn btn-ban" onclick="banUser('${u.username}')">Ban</button>
+            </span>
+          `;
+        }
+
+        li.innerHTML = `
+          <span onclick="openDmChat('${u.username}')" style="cursor:pointer;">
+            <span class="online-dot"></span> 
+            <span style="color:${u.color}">${u.username}</span> 
+            ${u.isMuted ? '<span class="muted-badge">Muted</span>' : ''}
+          </span>
+          ${adminControls}
+        `;
         list.appendChild(li);
       });
     });
 
+    /* Font & Theme Selectors */
     function changeFont(font) {
       document.documentElement.style.setProperty('--app-font', font);
       localStorage.setItem('smoc_font', font);
@@ -406,7 +530,39 @@
 
     function changeTheme(theme) {
       const root = document.documentElement.style;
-      if (theme === 'matrix') {
+      if (theme === 'sunset') {
+        root.setProperty('--bg-color', '#1f1124');
+        root.setProperty('--card-bg', '#2b1731');
+        root.setProperty('--header-bg', '#381c40');
+        root.setProperty('--accent-color', '#ff5722');
+        root.setProperty('--text-color', '#fff');
+        root.setProperty('--msg-bg', '#4a2354');
+        root.setProperty('--msg-mine-bg', '#7b1fa2');
+      } else if (theme === 'ocean') {
+        root.setProperty('--bg-color', '#0a192f');
+        root.setProperty('--card-bg', '#112240');
+        root.setProperty('--header-bg', '#1d3557');
+        root.setProperty('--accent-color', '#64ffda');
+        root.setProperty('--text-color', '#e6f1ff');
+        root.setProperty('--msg-bg', '#233554');
+        root.setProperty('--msg-mine-bg', '#0077b6');
+      } else if (theme === 'dracula') {
+        root.setProperty('--bg-color', '#282a36');
+        root.setProperty('--card-bg', '#44475a');
+        root.setProperty('--header-bg', '#6272a4');
+        root.setProperty('--accent-color', '#ff79c6');
+        root.setProperty('--text-color', '#f8f8f2');
+        root.setProperty('--msg-bg', '#6272a4');
+        root.setProperty('--msg-mine-bg', '#bd93f9');
+      } else if (theme === 'golden') {
+        root.setProperty('--bg-color', '#111111');
+        root.setProperty('--card-bg', '#1c1a17');
+        root.setProperty('--header-bg', '#2a2620');
+        root.setProperty('--accent-color', '#ffd700');
+        root.setProperty('--text-color', '#fff8e7');
+        root.setProperty('--msg-bg', '#332d23');
+        root.setProperty('--msg-mine-bg', '#544622');
+      } else if (theme === 'matrix') {
         root.setProperty('--bg-color', '#050d05');
         root.setProperty('--card-bg', '#0a1a0a');
         root.setProperty('--header-bg', '#0f260f');
