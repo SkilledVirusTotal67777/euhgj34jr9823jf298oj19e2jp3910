@@ -10,7 +10,9 @@ const server = http.createServer(app);
 const io = new Server(server);
 
 const DATA_FILE = path.join(__dirname, 'database.json');
-const ADMIN_PIN_HASH = '350170068158c30c3ad7bbbb1325d03828989a3ad4c004be51c6c53e085bb946';
+
+// Correct SHA-256 Hash of "972"
+const ADMIN_PIN_HASH = '3658d7fa3c43456f3c9c87db0490e872039516e6375336254560167cc3db2ea2';
 
 function hashPin(pin) {
   return crypto.createHash('sha256').update(String(pin)).digest('hex');
@@ -22,17 +24,20 @@ function getDmKey(u1, u2) {
 
 let db = {
   users: {
-    'admin': { pinHash: ADMIN_PIN_HASH, isBlocked: false }
+    'admin': { pinHash: ADMIN_PIN_HASH, isBlocked: false, isMuted: false, nameColor: '#ff4d4d' }
   },
   messages: [],
-  dms: {} // Format: "user1:::user2": [ { id, sender, recipient, text, time } ]
+  dms: {}
 };
 
 if (fs.existsSync(DATA_FILE)) {
   try {
     db = JSON.parse(fs.readFileSync(DATA_FILE));
     if (!db.users['admin']) {
-      db.users['admin'] = { pinHash: ADMIN_PIN_HASH, isBlocked: false };
+      db.users['admin'] = { pinHash: ADMIN_PIN_HASH, isBlocked: false, isMuted: false, nameColor: '#ff4d4d' };
+    } else {
+      // Force repair admin PIN hash if corrupted
+      db.users['admin'].pinHash = ADMIN_PIN_HASH;
     }
     if (!db.dms) db.dms = {};
   } catch (e) {
@@ -46,18 +51,34 @@ function saveData() {
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-const onlineUsers = new Map();
+const onlineUsers = new Map(); // socket.id -> username
+const userSpamTracker = new Map(); // username -> lastMessageTimestamp
+
+// Derogatory slur filter regex
+const SLUR_REGEX = /\b(nigg[aerx]s?|fagg?ots?|kikes?|chinks?|spics?|retards?|cunts?|trannys?)\b/i;
+
+const FUNNY_REPLACEMENTS = [
+  "said a no no word! :(",
+  "lost their talking privileges for saying something silly! 🙈",
+  "accidentally dropped their ice cream on the floor! 🍦",
+  "tried to speak alien language! 👾",
+  "forgot how to use polite words! 🤐"
+];
 
 function broadcastOnlineUsers() {
-  const usersList = Array.from(new Set(onlineUsers.values()));
+  const usersList = Array.from(new Set(onlineUsers.values())).map(u => ({
+    username: u,
+    color: db.users[u]?.nameColor || '#4caf50',
+    isMuted: db.users[u]?.isMuted || false
+  }));
   io.emit('update_online_users', usersList);
 }
 
 function validateUser(username, pin) {
   const user = db.users[username];
   if (!user) return { valid: false, error: "User does not exist." };
-  if (user.isBlocked) return { valid: false, error: "This user account is blocked." };
-  if (user.pinHash !== hashPin(pin)) return { valid: false, error: "Incorrect PIN." };
+  if (user.isBlocked) return { valid: false, error: "This account has been banned by Admin." };
+  if (user.pinHash !== hashPin(pin)) return { valid: false, error: "Incorrect PIN for registered account." };
   return { valid: true, user };
 }
 
@@ -73,12 +94,18 @@ io.on('connection', (socket) => {
       const check = validateUser(username, pin);
       if (!check.valid) return callback({ success: false, error: check.error });
     } else {
-      db.users[username] = { pinHash: hashPin(pin), isBlocked: false };
+      // Register new user account
+      db.users[username] = { 
+        pinHash: hashPin(pin), 
+        isBlocked: false, 
+        isMuted: false, 
+        nameColor: '#4caf50' 
+      };
       saveData();
     }
 
     socket.username = username;
-    socket.join(username); // Socket room for private DMs
+    socket.join(username);
     onlineUsers.set(socket.id, username);
     broadcastOnlineUsers();
 
@@ -86,7 +113,8 @@ io.on('connection', (socket) => {
       success: true,
       isAdmin: username === 'admin',
       messages: db.messages,
-      allUsers: Object.keys(db.users)
+      allUsers: Object.keys(db.users),
+      nameColor: db.users[username].nameColor || '#4caf50'
     });
   });
 
@@ -97,15 +125,39 @@ io.on('connection', (socket) => {
     }
   });
 
-  /* --- Public Chat --- */
+  /* --- Public Chat & Spam/Slur Filter --- */
   socket.on('send_message', ({ username, pin, text }) => {
     const check = validateUser(username, pin);
     if (!check.valid || !text.trim()) return;
 
+    if (check.user.isMuted) {
+      return socket.emit('chat_error', '⚠️ You are currently muted by Admin.');
+    }
+
+    // Spam Filter: 1 message per second limit
+    const now = Date.now();
+    const lastTime = userSpamTracker.get(username) || 0;
+    if (now - lastTime < 1000) {
+      return socket.emit('chat_error', '⚠️ Slow down! Spam filter active (1 msg/sec).');
+    }
+    userSpamTracker.set(username, now);
+
+    let finalText = text.trim();
+    let isFiltered = false;
+
+    // Slur Filter check
+    if (SLUR_REGEX.test(finalText)) {
+      isFiltered = true;
+      const randomFunny = FUNNY_REPLACEMENTS[Math.floor(Math.random() * FUNNY_REPLACEMENTS.length)];
+      finalText = `${username} ${randomFunny}`;
+    }
+
     const msg = {
       id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
       username,
-      text: text.trim(),
+      color: check.user.nameColor || '#4caf50',
+      text: finalText,
+      isFiltered,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
@@ -114,38 +166,11 @@ io.on('connection', (socket) => {
     io.emit('new_message', msg);
   });
 
-  socket.on('delete_message', ({ username, pin, messageId }) => {
-    const check = validateUser(username, pin);
-    if (!check.valid) return;
-
-    const index = db.messages.findIndex(m => m.id === messageId);
-    if (index === -1) return;
-
-    if (db.messages[index].username === username || username === 'admin') {
-      db.messages.splice(index, 1);
-      saveData();
-      io.emit('message_deleted', messageId);
-    }
-  });
-
-  socket.on('edit_message', ({ username, pin, messageId, newText }) => {
-    const check = validateUser(username, pin);
-    if (!check.valid || !newText.trim()) return;
-
-    const msg = db.messages.find(m => m.id === messageId);
-    if (msg && msg.username === username) {
-      msg.text = newText.trim();
-      saveData();
-      io.emit('message_edited', { id: messageId, newText: msg.text });
-    }
-  });
-
-  /* --- Direct Messaging (DM) --- */
+  /* --- Direct Messaging --- */
   socket.on('get_dm_data', ({ username, pin }, callback) => {
     const check = validateUser(username, pin);
     if (!check.valid) return callback({ success: false });
 
-    // Find all active DM partners for this user
     const activePartners = new Set();
     Object.keys(db.dms).forEach(key => {
       const parts = key.split(':::');
@@ -175,32 +200,94 @@ io.on('connection', (socket) => {
     const check = validateUser(username, pin);
     if (!check.valid || !text.trim() || !db.users[recipient]) return;
 
+    if (check.user.isMuted) {
+      return socket.emit('chat_error', '⚠️ You are muted and cannot send DMs.');
+    }
+
+    const now = Date.now();
+    const lastTime = userSpamTracker.get(username) || 0;
+    if (now - lastTime < 1000) {
+      return socket.emit('chat_error', '⚠️ Slow down! Spam filter active.');
+    }
+    userSpamTracker.set(username, now);
+
     const key = getDmKey(username, recipient);
     if (!db.dms[key]) db.dms[key] = [];
+
+    let finalText = text.trim();
+    let isFiltered = false;
+
+    if (SLUR_REGEX.test(finalText)) {
+      isFiltered = true;
+      const randomFunny = FUNNY_REPLACEMENTS[Math.floor(Math.random() * FUNNY_REPLACEMENTS.length)];
+      finalText = `${username} ${randomFunny}`;
+    }
 
     const msg = {
       id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
       sender: username,
       recipient,
-      text: text.trim(),
+      color: check.user.nameColor || '#4caf50',
+      text: finalText,
+      isFiltered,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
     db.dms[key].push(msg);
     saveData();
 
-    // Send real-time event to sender & recipient
     io.to(username).to(recipient).emit('new_dm', { key, msg });
   });
 
-  socket.on('block_user', ({ username, pin, targetUsername }) => {
+  /* --- Customization & Commands --- */
+  socket.on('set_name_color', ({ username, pin, color }) => {
+    const check = validateUser(username, pin);
+    if (!check.valid) return;
+
+    if (db.users[username]) {
+      db.users[username].nameColor = color;
+      saveData();
+      broadcastOnlineUsers();
+      socket.emit('color_updated', color);
+    }
+  });
+
+  /* --- Admin Controls --- */
+  socket.on('delete_message', ({ username, pin, messageId }) => {
+    const check = validateUser(username, pin);
+    if (!check.valid) return;
+
+    const index = db.messages.findIndex(m => m.id === messageId);
+    if (index === -1) return;
+
+    if (db.messages[index].username === username || username === 'admin') {
+      db.messages.splice(index, 1);
+      saveData();
+      io.emit('message_deleted', messageId);
+    }
+  });
+
+  socket.on('toggle_mute', ({ username, pin, targetUsername }) => {
+    const check = validateUser(username, pin);
+    if (!check.valid || username !== 'admin') return;
+
+    if (db.users[targetUsername] && targetUsername !== 'admin') {
+      db.users[targetUsername].isMuted = !db.users[targetUsername].isMuted;
+      saveData();
+      broadcastOnlineUsers();
+      io.emit('user_muted_status', { targetUsername, isMuted: db.users[targetUsername].isMuted });
+    }
+  });
+
+  socket.on('ban_user', ({ username, pin, targetUsername }) => {
     const check = validateUser(username, pin);
     if (!check.valid || username !== 'admin') return;
 
     if (db.users[targetUsername] && targetUsername !== 'admin') {
       db.users[targetUsername].isBlocked = true;
       saveData();
-      io.emit('user_blocked', targetUsername);
+      io.emit('user_banned', targetUsername);
+      broadcastOnlineUsers();
     }
   });
 });
