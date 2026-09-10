@@ -10,30 +10,31 @@ const server = http.createServer(app);
 const io = new Server(server);
 
 const DATA_FILE = path.join(__dirname, 'database.json');
-
-// SHA(Whats up motherfucker)
 const ADMIN_PIN_HASH = '350170068158c30c3ad7bbbb1325d03828989a3ad4c004be51c6c53e085bb946';
 
-// SHA-256 hashing helper
 function hashPin(pin) {
   return crypto.createHash('sha256').update(String(pin)).digest('hex');
 }
 
-// Initial Database
+function getDmKey(u1, u2) {
+  return [u1, u2].sort().join(':::');
+}
+
 let db = {
   users: {
     'admin': { pinHash: ADMIN_PIN_HASH, isBlocked: false }
   },
-  messages: []
+  messages: [],
+  dms: {} // Format: "user1:::user2": [ { id, sender, recipient, text, time } ]
 };
 
-// Load saved data from JSON database file
 if (fs.existsSync(DATA_FILE)) {
   try {
     db = JSON.parse(fs.readFileSync(DATA_FILE));
     if (!db.users['admin']) {
       db.users['admin'] = { pinHash: ADMIN_PIN_HASH, isBlocked: false };
     }
+    if (!db.dms) db.dms = {};
   } catch (e) {
     console.error("Error reading database:", e);
   }
@@ -43,8 +44,14 @@ function saveData() {
   fs.writeFileSync(DATA_FILE, JSON.stringify(db, null, 2));
 }
 
-// Serve public HTML/CSS files
 app.use(express.static(path.join(__dirname, 'public')));
+
+const onlineUsers = new Map();
+
+function broadcastOnlineUsers() {
+  const usersList = Array.from(new Set(onlineUsers.values()));
+  io.emit('update_online_users', usersList);
+}
 
 function validateUser(username, pin) {
   const user = db.users[username];
@@ -55,7 +62,7 @@ function validateUser(username, pin) {
 }
 
 io.on('connection', (socket) => {
-  // Handle Login & Registration
+  
   socket.on('login', ({ username, pin }, callback) => {
     username = username.trim();
     pin = String(pin).trim();
@@ -66,19 +73,31 @@ io.on('connection', (socket) => {
       const check = validateUser(username, pin);
       if (!check.valid) return callback({ success: false, error: check.error });
     } else {
-      // Create new account automatically
       db.users[username] = { pinHash: hashPin(pin), isBlocked: false };
       saveData();
     }
 
+    socket.username = username;
+    socket.join(username); // Socket room for private DMs
+    onlineUsers.set(socket.id, username);
+    broadcastOnlineUsers();
+
     callback({
       success: true,
       isAdmin: username === 'admin',
-      messages: db.messages
+      messages: db.messages,
+      allUsers: Object.keys(db.users)
     });
   });
 
-  // Handle Send Message
+  socket.on('disconnect', () => {
+    if (onlineUsers.has(socket.id)) {
+      onlineUsers.delete(socket.id);
+      broadcastOnlineUsers();
+    }
+  });
+
+  /* --- Public Chat --- */
   socket.on('send_message', ({ username, pin, text }) => {
     const check = validateUser(username, pin);
     if (!check.valid || !text.trim()) return;
@@ -95,7 +114,6 @@ io.on('connection', (socket) => {
     io.emit('new_message', msg);
   });
 
-  // Handle Delete Message
   socket.on('delete_message', ({ username, pin, messageId }) => {
     const check = validateUser(username, pin);
     if (!check.valid) return;
@@ -103,7 +121,6 @@ io.on('connection', (socket) => {
     const index = db.messages.findIndex(m => m.id === messageId);
     if (index === -1) return;
 
-    // Only owner or admin can delete
     if (db.messages[index].username === username || username === 'admin') {
       db.messages.splice(index, 1);
       saveData();
@@ -111,13 +128,11 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Handle Edit Message
   socket.on('edit_message', ({ username, pin, messageId, newText }) => {
     const check = validateUser(username, pin);
     if (!check.valid || !newText.trim()) return;
 
     const msg = db.messages.find(m => m.id === messageId);
-    // Users can only edit their own messages
     if (msg && msg.username === username) {
       msg.text = newText.trim();
       saveData();
@@ -125,7 +140,59 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Handle Block User (Admin only)
+  /* --- Direct Messaging (DM) --- */
+  socket.on('get_dm_data', ({ username, pin }, callback) => {
+    const check = validateUser(username, pin);
+    if (!check.valid) return callback({ success: false });
+
+    // Find all active DM partners for this user
+    const activePartners = new Set();
+    Object.keys(db.dms).forEach(key => {
+      const parts = key.split(':::');
+      if (parts.includes(username)) {
+        const partner = parts[0] === username ? parts[1] : parts[0];
+        activePartners.add(partner);
+      }
+    });
+
+    callback({
+      success: true,
+      activePartners: Array.from(activePartners),
+      allUsers: Object.keys(db.users).filter(u => u !== username)
+    });
+  });
+
+  socket.on('get_dm_history', ({ username, pin, targetUser }, callback) => {
+    const check = validateUser(username, pin);
+    if (!check.valid) return callback({ success: false });
+
+    const key = getDmKey(username, targetUser);
+    const history = db.dms[key] || [];
+    callback({ success: true, history });
+  });
+
+  socket.on('send_dm', ({ username, pin, recipient, text }) => {
+    const check = validateUser(username, pin);
+    if (!check.valid || !text.trim() || !db.users[recipient]) return;
+
+    const key = getDmKey(username, recipient);
+    if (!db.dms[key]) db.dms[key] = [];
+
+    const msg = {
+      id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
+      sender: username,
+      recipient,
+      text: text.trim(),
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    db.dms[key].push(msg);
+    saveData();
+
+    // Send real-time event to sender & recipient
+    io.to(username).to(recipient).emit('new_dm', { key, msg });
+  });
+
   socket.on('block_user', ({ username, pin, targetUsername }) => {
     const check = validateUser(username, pin);
     if (!check.valid || username !== 'admin') return;
